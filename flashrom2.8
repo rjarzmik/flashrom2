@@ -1,0 +1,125 @@
+.TH FLASHROM2 8 "" ""
+.SH NAME
+flashrom2 \- detect, read, write, verify and erase flash chips
+.SH SYNOPSIS
+.B flashrom2 \fR[ options \fR] <operations>
+
+.SH DESCRIPTION
+.B flashrom2
+is a utility for detecting, reading, writing, verifying and erasing flash
+chips. It's a tiny subset of what it's father flashrom2 can do, see
+http://flashrom.org.
+It's often used to flash BIOS/EFI/coreboot/firmware images in-system
+using a supported mainboard. It support a variety of programmers.
+It supports a wide range of DIP32, PLCC32, DIP8, SO8/SOIC8, TSOP32, TSOP40,
+TSOP48, and BGA chips, which use various protocols such as SPI.
+
+.SH EXAMPLES
+.TP
+Flash a chip as quick as possible :
+flashrom2 --write-strategy=wipe_by_biggest_erases -w image.bin
+
+.TP
+Flash a chip with as less wearing as possible :
+flashrom2 --write-strategy=wipe_if_changes -w image.bin
+
+.SH OPTIONS
+All options are visible by executing .B flashrom2 without parameters.
+
+.TP
+\fB\-c\fR <chipname>
+Specify a specific chip to use. If not specified, automatic is chosen.
+
+.TP
+\fB\-p\fR <programmer>
+Specifiy the programmer to use. Supported programmers are dediprog for SF100
+devices. Each programmer has its own list of parameters, such as the voltage to
+apply or the bus frequency to use.
+
+.TP
+\fB\--write-strategy\fR <strategy>
+The strategy specifies how the chip is to be written :
+.sp
+* wipe_by_biggest_erases
+This is the option to perform the write as quick as quick as possible, at the
+expense of chip wearing out. For the portion of the chip to be written, the
+biggest erasing blocks encompassing this region are chosen to be erased, which
+means that if a chips provides a 64kB and a 4kB erase method and 64kB of data
+are to be written, the 64kB erase will be chosen.
+.sp
+* wipe_if_changes
+This is the options to perform a slower write, but ensure the erasing operations
+are minimal. This implies that .B flashrom2 reads first the whole flash chip,
+and then compares with the to be written file. If common blocks are found, no
+erase or write operation happens on these blocks.
+
+.SH PROGRAMMER-SPECIFIC INFORMATION
+Support for some programmers can be disabled at compile time.
+
+.SS
+.TP
+.BR "dediprog " programmer
+An optional
+.B voltage
+parameter specifies the voltage the Dediprog should
+use. The default unit is Volt if no unit is specified. You can use
+.BR mV
+", " milliVolt ", " V " or " Volt as unit specifier. Syntax is
+.sp
+.B "  flashrom2 \-p dediprog:voltage=value"
+.sp
+where
+.B value
+can be
+.BR 0V ", " 1.8V ", " 2.5V ", " 3.5V
+or the equivalent in mV.
+.sp
+An optional
+.B device
+parameter specifies which of multiple connected Dediprog devices should be used.
+Please be aware that the order depends on libusb's usb_get_busses() function and that the numbering starts
+at 0.
+Usage example to select the second device:
+.sp
+.B "  flashrom2 \-p dediprog:device=1"
+.sp
+An optional
+.B hz
+parameter specifies the frequency of the SPI bus. The firmware on the device needs to be 5.0.0 or newer.
+Syntax is
+.sp
+.B "  flashrom2 \-p dediprog:hz=frequency"
+.sp
+where
+.B frequency
+can be
+.BR 375k ", " 750k ", " 1.5M ", " 2.18M ", " 3M ", " 8M ", " 12M " or " 24M
+(in Hz). The default is a frequency of 12 MHz.
+.sp
+An optional
+.B target
+parameter specifies which target chip should be used. Syntax is
+.sp
+.B "  flashrom2 \-p dediprog:target=value"
+.sp
+where
+.B value
+can be
+.BR 1 " or " 2
+to select target chip 1 or 2 respectively. The default is target chip 1.
+.SS
+
+.SH AUTHORS
+Written by Robert Jarzmik.
+.sp
+A lot of the code was reused from
+.B flashrom
+project.
+
+.SH COPYRIGHT
+
+Copyright \(co 2014 Free Software Foundation, Inc.  License GPLv3+: GNU GPL
+version 3 or later <http://gnu.org/licenses/gpl.html>.
+.br
+This is free software: you are free to change and redistribute it.  There is NO
+WARRANTY, to the extent permitted by law.
