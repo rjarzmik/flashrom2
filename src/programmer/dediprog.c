@@ -24,6 +24,7 @@
 #include <chip.h>
 #include <debug.h>
 #include <programmer.h>
+#include <spi_nor.h>
 #include <spi_programmer.h>
 #include <usb_util.h>
 
@@ -304,19 +305,20 @@ static int do_dediprog_spi_read_pages(struct dediprog_data *ddata,
 				      pagesize, DEDI_SPI_CMD_PAGESREAD);
 
 	memset(tmp_buf, 0xff, sizeof(tmp_buf));
-	if (!ret && first_page_bytes) {
+	if (ret >= 0 && first_page_bytes) {
 		ret = do_usb_bulk_read(ddata->dediprog_handle, 2,
 				       tmp_buf, DEDIPROG_MIN_ALIGN,
 				       DEFAULT_TIMEOUT);
 		memcpy(buf, tmp_buf + skip_first, first_page_bytes);
 		buf += first_page_bytes;
 	}
-	for (i = 0; ret >= 0 && i < nb_middle_pages; i++) {
+	ret = DEDIPROG_MIN_ALIGN;
+	for (i = 0; ret >= DEDIPROG_MIN_ALIGN && i < nb_middle_pages; i++) {
 		ret = do_usb_bulk_read(ddata->dediprog_handle, 2, buf,
 				       DEDIPROG_MIN_ALIGN, DEFAULT_TIMEOUT);
 		buf += pagesize;
 	}
-	if (ret >= 0 && last_page_bytes) {
+	if (ret >= DEDIPROG_MIN_ALIGN && last_page_bytes) {
 		ret = do_usb_bulk_read(ddata->dediprog_handle, 2, tmp_buf,
 				       DEDIPROG_MIN_ALIGN, DEFAULT_TIMEOUT);
 		memcpy(buf, tmp_buf, last_page_bytes);
@@ -378,21 +380,22 @@ static int do_dediprog_spi_write_pages(struct dediprog_data *ddata,
 		buf += first_page_bytes;
 	}
 	memset(tmp_buf, 0xff, sizeof(tmp_buf));
-	for (i = 0; ret >= 0 && i < nb_middle_pages; i++) {
+	ret = DEDIPROG_MIN_ALIGN;
+	for (i = 0; ret >= DEDIPROG_MIN_ALIGN && i < nb_middle_pages; i++) {
 		memcpy(tmp_buf, buf, pagesize);
 		ret = do_usb_bulk_write(ddata->dediprog_handle, 2, tmp_buf,
 				       DEDIPROG_MIN_ALIGN, DEFAULT_TIMEOUT);
 		buf += pagesize;
 	}
 	memset(tmp_buf, 0xff, sizeof(tmp_buf));
-	if (ret >= 0 && last_page_bytes) {
+	if (ret >= DEDIPROG_MIN_ALIGN && last_page_bytes) {
 		memcpy(tmp_buf, buf, last_page_bytes);
 		ret = do_usb_bulk_read(ddata->dediprog_handle, 2, tmp_buf,
 				       DEDIPROG_MIN_ALIGN, DEFAULT_TIMEOUT);
 		buf += last_page_bytes;
 	}
 
-	if (ret < 0)
+	if (ret < DEDIPROG_MIN_ALIGN)
 		return ret;
 	else
 		return len;
@@ -409,10 +412,13 @@ static int dediprog_spi_read(struct context *ctxt, unsigned char *buf,
 
 	ret = do_dediprog_spi_read_pages(ddata, buf, start, len,
 					 DEDIPROG_MIN_ALIGN);
-	if (ret < 0)
+	if (ret < len) {
 		dediprog_set_leds(ddata, PASS_OFF|BUSY_OFF|ERROR_ON);
-	else
+		pr_err("dediprog read error: wrote %d bytes while expected %d\n",
+		       ret, len);
+	} else {
 		dediprog_set_leds(ddata, PASS_ON|BUSY_OFF|ERROR_OFF);
+	}
 
 	return ret;
 }
@@ -420,7 +426,7 @@ static int dediprog_spi_read(struct context *ctxt, unsigned char *buf,
 static int dediprog_spi_write(struct context *ctxt, const unsigned char *buf,
 			      off_t start, size_t len)
 {
-	int ret;
+	int ret, timeout = 10;
 	struct dediprog_data *ddata = ctxt->programmer_data;
 
 	pr_dbg("write dediprog(buf=%p, start=%u, len=%zu)\n", buf, start, len);
@@ -428,10 +434,16 @@ static int dediprog_spi_write(struct context *ctxt, const unsigned char *buf,
 
 	ret = do_dediprog_spi_write_pages(ddata, buf, start, len,
 					  ctxt->chip->page_size);
-	if (ret < 0)
+	while (timeout-- && spi_read_status_register(ctxt) & SPI_SR_WIP)
+		programmer_delay(10);
+
+	if (!timeout || ret < len) {
 		dediprog_set_leds(ddata, PASS_OFF|BUSY_OFF|ERROR_ON);
-	else
+		pr_err("dediprog write error: wrote %d bytes while expected %d%s\n",
+		       ret, len, timeout ? "" : " timeout to clear 'write in processing' occurred");
+	} else {
 		dediprog_set_leds(ddata, PASS_ON|BUSY_OFF|ERROR_OFF);
+	}
 
 	return ret;
 }
