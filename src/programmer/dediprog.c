@@ -67,9 +67,10 @@ struct dediprog_data {
 #define ERROR_ON	(0 << 2)
 #define ERROR_OFF	(1 << 2)
 
-static int dediprog5_set_leds(struct dediprog_data *ddata, int leds)
+static int dediprog4_set_leds(struct dediprog_data *ddata, int leds)
 {
-	/* Older Dediprogs with 2.x.x and 3.x.x firmware only had
+	/*
+	 * Older Dediprogs with 2.x.x and 3.x.x firmware only had
 	 * two LEDs, and they were reversed. So map them around if
 	 * we have an old device. On those devices the LEDs map as
 	 * follows:
@@ -82,7 +83,14 @@ static int dediprog5_set_leds(struct dediprog_data *ddata, int leds)
 				   DEFAULT_TIMEOUT);
 }
 
-static int dediprog6_set_leds(struct dediprog_data *ddata, int leds)
+static int dediprog5_set_leds(struct dediprog_data *ddata, int leds)
+{
+	return usb_vendor_ctrl_msg(ddata->dediprog_handle, 0x07,
+				   0x0009, leds, NULL, 0, NULL, 0,
+				   DEFAULT_TIMEOUT);
+}
+
+static int dediprog55_set_leds(struct dediprog_data *ddata, int leds)
 {
 	return usb_vendor_ctrl_msg(ddata->dediprog_handle, 0x07,
 				   (leds << 8) | 0x0009, 0x0000,
@@ -96,6 +104,9 @@ static int dediprog_set_leds(struct dediprog_data *ddata, int leds)
 	if (leds < 0 || leds > 7)
 		leds = 0; // Bogus value, enable all LEDs
 
+	pr_dbg("set leds to pass=%s, busy=%s, error=%s\n",
+	       leds & PASS_OFF ? "off" : "on", leds & BUSY_OFF ? "off" : "on",
+	       leds & ERROR_OFF ? "off" : "on");
 	ret = ddata->set_leds(ddata, leds);
 	if (ret != 0) {
 		pr_err("Command Set LED 0x%x failed (%s)!\n",
@@ -182,7 +193,7 @@ static int dediprog_spi_send_command(struct context *ctxt,
 
 	ret = ddata->send_command(ddata, writecnt, readcnt, writearr, readarr);
 	dediprog_set_leds(ddata, PASS_OFF | BUSY_OFF |
-			  (ret < 0) ? ERROR_ON : ERROR_OFF);
+			  ((ret < 0) ? ERROR_ON : ERROR_OFF));
 	return ret;
 }
 
@@ -218,15 +229,16 @@ static int dediprog5_prep_multi_cmd(struct dediprog_data *ddata, int nb_pages,
 {
 	struct firm5 {
 		unsigned short nb_pages;
-		unsigned short pagesize;
+		unsigned char zero1;
 		unsigned char spi_cmd;
 	} __attribute__((packed)) seek_pre6;
 
 	seek_pre6.nb_pages = nb_pages;
-	seek_pre6.pagesize = pagesize - 1;
+	seek_pre6.zero1 = 0;
 	seek_pre6.spi_cmd = spi_cmd;
 
-	return usb_vendor_ctrl_msg(ddata->dediprog_handle, 0x20,
+	return usb_vendor_ctrl_msg(ddata->dediprog_handle,
+				   spi_cmd == DEDI_SPI_CMD_PAGESREAD ? 0x20 : 0x30,
 				   start % 0x10000, start / 0x10000,
 				   NULL, 0, (unsigned char *)&seek_pre6,
 				   sizeof(seek_pre6), DEFAULT_TIMEOUT);
@@ -412,7 +424,7 @@ static int dediprog_spi_read(struct context *ctxt, unsigned char *buf,
 
 	ret = do_dediprog_spi_read_pages(ddata, buf, start, len,
 					 DEDIPROG_MIN_ALIGN);
-	if (ret < len) {
+	if (ret < (int)len) {
 		dediprog_set_leds(ddata, PASS_OFF|BUSY_OFF|ERROR_ON);
 		pr_err("dediprog read error: wrote %d bytes while expected %d\n",
 		       ret, len);
@@ -434,10 +446,11 @@ static int dediprog_spi_write(struct context *ctxt, const unsigned char *buf,
 
 	ret = do_dediprog_spi_write_pages(ddata, buf, start, len,
 					  ctxt->chip->page_size);
-	while (timeout-- && spi_read_status_register(ctxt) & SPI_SR_WIP)
+	while (ret > (int)len && timeout-- &&
+	       spi_read_status_register(ctxt) & SPI_SR_WIP)
 		programmer_delay(10);
 
-	if (!timeout || ret < len) {
+	if (!timeout || (ret < (int)len)) {
 		dediprog_set_leds(ddata, PASS_OFF|BUSY_OFF|ERROR_ON);
 		pr_err("dediprog write error: wrote %d bytes while expected %d%s\n",
 		       ret, len, timeout ? "" : " timeout to clear 'write in processing' occurred");
@@ -536,8 +549,8 @@ static int dediprog_set_spi_voltage(struct dediprog_data *ddata, int millivolt)
 {
 	int ret = -1;
 	uint16_t voltage_selector = dediprog_spi_voltage_value(millivolt);
-	pr_dbg("Setting SPI voltage to %u.%03u V\n", millivolt / 1000,
-	       millivolt % 1000);
+	pr_info("Setting SPI voltage to %u.%03u V\n", millivolt / 1000,
+		millivolt % 1000);
 
 	if (voltage_selector == 0) {
 		/* Wait some time as the original driver does. */
@@ -566,6 +579,12 @@ static int dediprog_command_a(struct dediprog_data *ddata)
 	unsigned char buf[1];
 
 	memset(buf, 0, sizeof(buf));
+	ret = usb_vendor_ctrl_msg(ddata->dediprog_handle, 4, 0x0000, 0x0000,
+				  NULL, 0, NULL, 0, DEFAULT_TIMEOUT);
+	if (ret < 0) {
+		pr_err("Command A failed (%s)!\n", usb_strerror());
+		return ret;
+	}
 	ret = do_usb_control_msg(ddata->dediprog_handle, 0xc3, 0xb,
 				 0x0000, 0x0000,
 				 buf, sizeof(buf), DEFAULT_TIMEOUT);
@@ -604,7 +623,6 @@ static int dediprog_check_devicestring(struct dediprog_data *ddata)
 		return 1;
 	}
 	buf[0x10] = '\0';
-	pr_warn("Found a %s\n", buf);
 	if (memcmp(buf, "SF100", 0x5)) {
 		pr_err("Device not a SF100!\n");
 		return -ENODEV;
@@ -614,6 +632,7 @@ static int dediprog_check_devicestring(struct dediprog_data *ddata)
 		pr_err("Unexpected firmware version string!\n");
 		return -ENODEV;
 	}
+	pr_warn("Found a %s (fw_version=%d.%d.%d)\n", buf, fw[0], fw[1], fw[2]);
 	/* Only these versions were tested. */
 	if (fw[0] < 2 || fw[0] > 6) {
 		pr_err("Unexpected firmware version %d.%d.%d!\n", fw[0],
@@ -667,19 +686,21 @@ static int dediprog_setup(struct dediprog_data *ddata)
 		return 1;
 	}
 
-	ddata->set_leds = dediprog5_set_leds;
 	ddata->send_command = dediprog5_spi_send_command;
 	ddata->prep_multi_cmd = dediprog5_prep_multi_cmd;
 	ddata->set_spi_speed = dediprog5_set_spi_speed;
 	ddata->set_spi_voltage = dediprog5_set_spi_voltage;
 	if (ddata->dediprog_firmwareversion < FIRMWARE_VERSION(5, 0, 0)) {
+		ddata->set_leds = dediprog4_set_leds;
 		ddata->set_spi_speed = dediprog4_set_spi_speed;
-	} else if (ddata->dediprog_firmwareversion >= FIRMWARE_VERSION(6, 0, 0)) {
-		ddata->set_leds = dediprog6_set_leds;
+	} else if (ddata->dediprog_firmwareversion >= FIRMWARE_VERSION(5, 5, 0)) {
+		ddata->set_leds = dediprog55_set_leds;
 		ddata->send_command = dediprog6_spi_send_command;
 		ddata->prep_multi_cmd = dediprog6_prep_multi_cmd;
 		ddata->set_spi_speed = dediprog6_set_spi_speed;
 		ddata->set_spi_voltage = dediprog6_set_spi_voltage;
+	} else if (ddata->dediprog_firmwareversion >= FIRMWARE_VERSION(5, 0, 0)) {
+		ddata->set_leds = dediprog5_set_leds;
 	}
 
 	return 0;
