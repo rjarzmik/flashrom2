@@ -1,0 +1,14 @@
+This is a packaged version of flashrom2.
+
+Copyright: 2015 Robert Jarzmik and all flashrom contributors.
+
+The git repository for mainline kernel development is at:
+https://github.com/rjarzmik/flashrom2.git
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; version 2 dated June, 1991.
+
+On Debian GNU/Linux systems, the complete text of the GNU General Public
+License version 2 can be found in \`/usr/share/common-licenses/GPL-2'.
+EOF

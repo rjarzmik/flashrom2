@@ -1,4 +1,5 @@
 PROGRAM = flashrom2
+VERSION = 0.1
 
 ###############################################################################
 # Defaults for the toolchain.
@@ -12,8 +13,6 @@ PROGRAM = flashrom2
 STRIP   ?= strip
 INSTALL = install
 DIFF    = diff
-PREFIX  ?= /usr/local
-MANDIR  ?= $(PREFIX)/share/man
 CFLAGS  ?= -O2 -Wall -Wshadow
 CFLAGS	+= $(EXTRA_CFLAGS)
 INCLUDES = -Iinclude
@@ -29,7 +28,13 @@ all: $(PROGRAM)
 clean:
 	rm -rf obj $(PROGRAM)
 
-.PHONY: all install clean distclean compiler hwlibs features export tarball
+.PHONY: all install clean debian
+
+install:
+	@mkdir -p $(DESTDIR)/usr/bin
+	@mkdir -p $(DESTDIR)/usr/share/man/man8
+	cp $(PROGRAM) $(DESTDIR)/usr/bin/
+	cp $(PROGRAM).8 $(DESTDIR)/usr/share/man/man8/
 
 $(PROGRAM): $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -37,5 +42,11 @@ $(PROGRAM): $(OBJS)
 obj/%.o: src/%.c
 	mkdir -p $$(dirname $@)
 	$(CC) -MMD $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -o $@ -c $<
+
+debian: $(PROGRAM)
+	mkdir -p obj
+	git archive --format=tar.gz -o obj/$(PROGRAM)-$(VERSION).orig.tar.gz v$(VERSION)
+	debian/rules build
+	fakeroot debian/rules binary
 
 -include $(OBJS:.o=.d)

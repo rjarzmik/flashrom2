@@ -38,3 +38,7 @@ flashrom2
 *.orig
 *~
 \#*#
+
+# Debian
+debian/files
+debian/flashrom2*

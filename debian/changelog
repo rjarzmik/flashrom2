@@ -1,0 +1,5 @@
+flashrom2 (0.1-1) UNRELEASED; urgency=low
+
+  * Initial release.
+
+ -- Robert Jarzmik <robert.jarzmik@free.fr>  Thu, 18 Jun 2015 11:06:51 +0200

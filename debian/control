@@ -1,0 +1,18 @@
+Source: flashrom2
+Maintainer: Robert Jarzmik <robert.jarzmik@free.fr>
+Section: misc
+Priority: optional
+Standards-Version: 3.9.2
+Build-Depends: debhelper (>= 9)
+
+Package: flashrom2
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: spi-nor and other flash chip flasher, to read, write and verify ROMs
+  flashrom2 is a utility for detecting, reading, writing, verifying and erasing
+  flash chips. It's a tiny subset of what it's father flashrom2 can do, see
+  http://flashrom.org.  It's often used to flash BIOS/EFI/coreboot/firmware
+  images in-system using a supported mainboard. It support a variety of
+  programmers.  It supports a wide range of DIP32, PLCC32, DIP8, SO8/SOIC8,
+  TSOP32, TSOP40, TSOP48, and BGA chips, which use various protocols such as
+  SPI.
