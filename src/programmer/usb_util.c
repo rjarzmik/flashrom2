@@ -22,18 +22,8 @@
 #include <stdint.h>
 
 #include <debug.h>
+#include <hexdump.h>
 #include <usb_util.h>
-
-static void hexdump_vdbg(const char *prefix, const void *buf, size_t len,
-	const char *postfix)
-{
-	size_t i;
-
-	pr_vdbg("%s", prefix);
-	for (i = 0; i < len; i++)
-		pr_vdbg_cont("%s%02x", i ? " " : "", ((uint8_t *)buf)[i]);
-	pr_vdbg_cont("%s", postfix);
-}
 
 struct usb_device *get_device_by_vid_pid(uint16_t vid, uint16_t pid,
 					 unsigned int device)
@@ -103,7 +93,7 @@ int do_usb_bulk_read(usb_dev_handle *dev, int endpoint, unsigned char *buf,
 	ret = usb_bulk_read(dev, endpoint | USB_ENDPOINT_IN, (char *)buf,
 			    len, timeout);
 	pr_vdbg("\tusb_bulk_read(endpoint=%d, buflen=%zu): %d\n",
-	       endpoint, len);
+		endpoint, len, ret);
 	hexdump_vdbg("\t\t Buf=[", buf, len, "]\n");
 	return ret;
 }

@@ -22,34 +22,10 @@
 
 #include <chip.h>
 #include <debug.h>
+#include <hexdump.h>
 #include <list.h>
 
 LIST_HEAD(chips);
-
-static void hexdump_vdbg(const char *prefix, const void *buf, size_t len,
-	const char *postfix)
-{
-	size_t i;
-	int repeat = 1;
-	const unsigned char *s = buf;
-
-	pr_vdbg("%s", prefix);
-	for (i = 0; i < len; i++) {
-		if (i + 1 == len) {
-			pr_vdbg_cont("%s%02x*%d", i ? " " : "", s[i], repeat);
-		} else if (s[i] == s[i + 1]) {
-			repeat++;
-		} else {
-			if (repeat > 1)
-				pr_vdbg_cont("%s%02x*%d", i ? " " : "",
-					     s[i], repeat);
-			else
-				pr_vdbg_cont("%s%02x", i ? " " : "", s[i]);
-			repeat = 1;
-		}
-	}
-	pr_vdbg_cont("%s", postfix);
-}
 
 void register_chip(const char *chip_name, struct flashchip *chip)
 {
