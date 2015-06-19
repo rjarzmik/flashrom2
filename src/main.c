@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 		{NULL, 0, 0, 0 }
 	};
 	struct operation op, op_programmer, op_chip;
-	enum write_strategy write_strategy = WIPE_IF_CHANGES;
+	enum write_strategy write_strategy = WIPE_BY_BIGGEST_ERASES;
 	char c;
 
 	if (argc == 1) {
