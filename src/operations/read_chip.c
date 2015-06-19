@@ -49,6 +49,7 @@ int op_read_chip(struct context *ctx, char *filename,
 		return errno;
 	}
 
+	pr_info("Reading zone 0x%06x..0x%06x\n", where, where + len);
 	ret = chip_read(ctx, buf, where, len);
 	if (ret < 0)
 		goto err;
@@ -61,6 +62,7 @@ int op_read_chip(struct context *ctx, char *filename,
 	}
 
 	ret = 0;
+	pr_warn("Read operation succeeded.\n");
 err:
 	free(buf);
 	fclose(f);

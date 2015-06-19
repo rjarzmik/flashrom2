@@ -61,14 +61,15 @@ int op_verify_chip(struct context *ctx, char *filename,
 		goto err;
 	}
 
+	pr_info("Reading zone 0x%06x..0x%06x\n", where, where + len);
 	ret = chip_read(ctx, buf, where, len);
 	if (ret < len)
 		goto err;
 	if (!memcmp(buf_reference + where, buf, len)) {
-		pr_info("Verification of chip against %s success.\n",
+		pr_warn("Verification of chip against %s success.\n",
 			filename);
 	} else {
-		pr_info("Verification of chip against %s failure.\n",
+		pr_warn("Verification of chip against %s failure.\n",
 			filename);
 	}
 	ret = 0;

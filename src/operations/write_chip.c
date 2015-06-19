@@ -34,14 +34,16 @@ static int chip_write_by_biggest_erases(struct context *context,
 {
 	int ret;
 
+	pr_info("Erasing zone 0x%06x..0x%06x\n", start, start + len);
 	ret = chip_erase(context, start, len, 0, NULL, NULL);
 	if (ret) {
 		pr_err("Erase of zone 0x%06x..0x%06x failed:%d\n",
 		       start, start + len, ret);
 		return ret;
 	}
+	pr_info("Writing zone 0x%06x..0x%06x\n", start, start + len);
 	ret = chip_write(context, buf, start, len);
-	return 0;
+	return ret;
 }
 
 static int chip_write_if_changes(struct context *context,
@@ -149,6 +151,7 @@ int op_write_chip(struct context *context, char *filename,
 	}
 
 	ret = 0;
+	pr_warn("Write operation succeeded.\n");
 err:
 	free(buf);
 	return ret;
