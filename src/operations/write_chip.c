@@ -120,6 +120,11 @@ int op_write_chip(struct context *context, char *filename,
 		len = ftell(f);
 		rewind(f);
 	}
+	if (len > chip->total_size_kb * 1024) {
+		pr_warn("File %s is bigger that chip total size %d, truncating\n",
+			filename, chip->total_size_kb * 1024);
+		len = chip->total_size_kb * 1024;
+	}
 	ret = fread(buf, len, 1, f);
 	if (ret < 1) {
 		pr_err("Couldn't read %zd bytes from %s\n",
