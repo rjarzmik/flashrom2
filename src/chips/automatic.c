@@ -36,12 +36,12 @@ static int auto_probe(struct context *ctxt, const char *chip_args)
 			head = automatic.list;
 			automatic = *chip;
 			automatic.list = head;
-			return 0;
+			return 1;
 		}
 	}
 
 	pr_err("Didn't find automatically any flash chip.\n");
-	return -ENODEV;
+	return 0;
 }
 
 static struct flashchip automatic = {

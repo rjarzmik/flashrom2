@@ -34,13 +34,12 @@ int op_set_chip(struct context *context, char *programmer_args)
 	pr_dbg("Setting chip to %s\n", chip_name);
 	for_each_chip(chip) {
 		if (!strcmp(chip->driver_name, chip_name)) {
+			context->chip = chip;
 			ret = chip->probe(context, programmer_args);
-			if (!ret) {
-				context->chip = chip;
-				return 0;
-			} else {
+			if (!ret)
 				return -ENODEV;
-			}
+			else
+				return 0;
 		}
 	}
 
