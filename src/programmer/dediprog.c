@@ -816,6 +816,13 @@ int dediprog_probe(const char *programmer_args, void **data)
 	return 0;
 }
 
+static void dediprog_shutdown(void *d)
+{
+	struct dediprog_data *ddata = d;
+
+	dediprog_set_spi_voltage(ddata, 0);
+}
+
 static struct programmer dediprog = {
 	.buses_supported = BUS_SPI,
 	.spi = {
@@ -827,6 +834,7 @@ static struct programmer dediprog = {
 		.write_256 = dediprog_spi_write,
 	},
 	.probe = dediprog_probe,
+	.shutdown = dediprog_shutdown,
 	.desc = "[voltage={1.8v,2.5v,3.5v}] [hz={12MHz,...}]",
 };
 

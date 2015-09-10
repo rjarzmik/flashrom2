@@ -134,5 +134,9 @@ int operations_launch(void)
 			return ret;
 		num_op++;
 	}
+
+	if (programmer_chip_available(&ctx))
+		programmer_shutdown(&ctx);
+
 	return 0;
 }

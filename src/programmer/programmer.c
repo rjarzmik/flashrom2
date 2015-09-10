@@ -52,3 +52,9 @@ char *extract_programmer_name(const char *programmer_args)
 {
 	return extract_param(programmer_args, "", ",:");
 }
+
+void programmer_shutdown(struct context *ctx)
+{
+	if (ctx->mst && ctx->mst->shutdown)
+		ctx->mst->shutdown(ctx->programmer_data);
+}

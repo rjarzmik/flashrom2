@@ -38,7 +38,7 @@ struct programmer {
 	struct list_head list;
 
 	int (*probe)(const char *programmer_args, void **pdata);
-	int (*shutdown)(void);
+	void (*shutdown)(void *pdata);
 };
 
 struct chip;
@@ -60,6 +60,7 @@ char *extract_programmer_param(const char *programmer_args,
 			       const char *param_name);
 void print_available_programmers(void);
 int register_programmer(struct programmer *mst);
+void programmer_shutdown(struct context *ctx);
 
 /*
  * Register function for each programmer.
