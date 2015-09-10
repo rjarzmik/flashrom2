@@ -14,6 +14,7 @@
  * GNU General Public License for more details.
  *
  */
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -40,7 +41,7 @@ static int programmer_chip_available(struct context *ctx)
 
 static char *get_operation_desc(struct operation *op)
 {
-	static char msg[80];
+	static char msg[80 + PATH_MAX];
 
 	switch (op->op) {
 	case READ:
